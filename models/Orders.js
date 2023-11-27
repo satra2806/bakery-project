@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
-
+const Counter = require('../models/Counters')
 const orderSchema = new mongoose.Schema({
+    id: Number,
     itemType:{  // : Cake, Cookies, Muffins
         type: String, 
         required: true
@@ -27,7 +28,28 @@ const orderSchema = new mongoose.Schema({
     },
 })
 
+orderSchema.pre('save', async  function(next) {
+    const doc = this
+    if(this.isNew){
+        try {
+            const counter = await Counter.findByIdAndUpdate('orders', { $inc: { seq: 1 } }, { new: true, upsert: true });
+
+            if (!counter) {
+                throw new Error("Counter not found or created");
+            }
+
+            this.id = counter.seq;
+            next();
+        } catch (error) {
+            return next(error)
+        }
+    } else {
+        next()
+    }
+})
+
 orderSchema.pre('save', function(next) {
+
     this.lastUpdateTime = Date.now()
     next()
 })
